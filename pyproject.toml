@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "social-scan"
+version = "1.0.0"
+description = "Buscador de perfiles públicos en redes sociales a partir de frases, nicks o fragmentos"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "BENDER35" }]
+keywords = ["osint", "social-networks", "username", "search"]
+classifiers = [
+  "Environment :: Console",
+  "Programming Language :: Python :: 3",
+  "Topic :: Utilities",
+]
+
+[project.scripts]
+social-scan = "social_scan.cli:main"
+
+[tool.setuptools]
+packages = ["social_scan"]
+
+[tool.setuptools.package-data]
+social_scan = ["data/*.json"]

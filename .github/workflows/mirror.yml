@@ -1,0 +1,37 @@
+name: Mirror automático a GitLab
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["**"]
+  delete: {}
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    env:
+      GITLAB_SSH_KEY: ${{ secrets.GITLAB_SSH_KEY }}
+      GITLAB_MIRROR_URL: ${{ vars.GITLAB_MIRROR_URL || 'git@gitlab.com:BENDER_5000/social-scan.git' }}
+    steps:
+      - name: Clonar con todo el historial
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configurar clave SSH de GitLab
+        if: env.GITLAB_SSH_KEY != ''
+        run: |
+          mkdir -p "$HOME/.ssh"
+          printf '%s\n' "$GITLAB_SSH_KEY" > "$HOME/.ssh/id_ed25519"
+          chmod 600 "$HOME/.ssh/id_ed25519"
+          ssh-keyscan -t ed25519 gitlab.com >> "$HOME/.ssh/known_hosts"
+
+      - name: Empujar espejo a GitLab
+        if: env.GITLAB_SSH_KEY != ''
+        run: |
+          git remote add gitlab "$GITLAB_MIRROR_URL"
+          git push --mirror gitlab

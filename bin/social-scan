@@ -1,0 +1,16 @@
+#!/usr/bin/env python3
+"""Lanzador portable para social-scan (repo, ZIP e instalación DEB)."""
+import os
+import sys
+
+_here = os.path.dirname(os.path.realpath(__file__))
+_parent = os.path.dirname(_here)
+for _candidate in (_parent, "/usr/lib/social-scan"):
+    if os.path.isdir(os.path.join(_candidate, "social_scan")):
+        sys.path.insert(0, _candidate)
+        break
+
+from social_scan.cli import main
+
+if __name__ == "__main__":
+    raise SystemExit(main())
