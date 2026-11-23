@@ -104,6 +104,13 @@ python3 tools/build_catalog.py --fetch
   - `vars.GITLAB_MIRROR_URL` (opcional): URL SSH del proyecto GitLab; por defecto `git@gitlab.com:BENDER_5000/social-scan.git`.
   - La clave pública correspondiente debe añadirse como *deploy key* con permiso de escritura en GitLab.
 
+## Estado del mirror
+
+- GitHub: https://github.com/BENDER35/social-scan
+- GitLab: https://gitlab.com/BENDER_5000/social-scan
+
+Ambos repositorios se sincronizan automáticamente con `git push origin main` (dos URLs de push) y, si se configuran los secretos indicados, también desde GitHub Actions.
+
 ## Licencia
 
 MIT. Los catálogos de Sherlock Project y Maigret se incluyen como datos y mantienen sus propias licencias; consulta sus repositorios originales.
