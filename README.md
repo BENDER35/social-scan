@@ -59,6 +59,20 @@ social-scan --list-sites
 social-scan --self-test
 ```
 
+## Modo dedicado: Instagram y X
+
+```bash
+social-scan jack --networks instagram,x
+social-scan "juan perez" --networks instagram,x --variants --format html -o ig-x.html
+```
+
+Este modo sustituye el catálogo y los motores generales por dos comprobaciones específicas:
+
+- **Instagram**: lee el `<title>` del perfil; una cuenta real declara `(@usuario)`.
+- **X**: consulta el endpoint público `syndication.twitter.com` y comprueba `headerProps.screenName`; si existe, añade nombre y seguidores a la evidencia.
+
+Las frases se convierten en variantes de nick (`juanperez`, `juan.perez`, …) con `--variants`. Ninguna de las dos plataformas ofrece una API pública de búsqueda por nombre sin autenticación, así que **no se puede buscar texto libre dentro de sus mensajes**; solo la existencia de perfiles. Si la plataforma limita la petición, el resultado aparece como `BLOCKED` en lugar de dar un falso negativo.
+
 ### Opciones principales
 
 | Opción | Descripción |

@@ -9,6 +9,7 @@ from pathlib import Path
 from . import __version__
 from .catalog import candidate_usernames, filter_sites, load_sites
 from .engines import run_engines
+from .networks import CHECKERS, scan_networks
 from .report import render
 from .scanner import HTTPClient, HTTPResponse, ScanResult, evaluate, scan_sites
 
@@ -24,6 +25,7 @@ def build_parser() -> argparse.ArgumentParser:
         epilog=(
             "Ejemplos:\n"
             "  social-scan octocat\n"
+            "  social-scan jack --networks x,instagram\n"
             "  social-scan 'Juan Pérez' --variants --format html -o juan.html\n"
             "  social-scan pepito --include 'GitHub|Instagram' --timeout 5\n"
             "  social-scan --list-sites | head\n"
@@ -40,6 +42,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--workers", type=int, default=24, metavar="N", help="peticiones concurrentes (default: 24)")
     parser.add_argument("--variants", action="store_true", help="prueba varias formas del término (más peticiones)")
     parser.add_argument("--no-engines", action="store_true", help="desactiva las APIs de búsqueda por texto")
+    parser.add_argument(
+        "--networks",
+        metavar="LISTA",
+        help="modo dedicado: solo Instagram y/o X (p. ej. --networks instagram,x)",
+    )
     parser.add_argument("--include", metavar="REGEX", help="sólo sitios cuyo nombre coincida (regex)")
     parser.add_argument("--exclude", metavar="REGEX", help="excluye sitios cuyo nombre coincida (regex)")
     parser.add_argument("--tags", metavar="LISTA", help="sólo sitios con alguna de estas etiquetas (comas)")
@@ -122,14 +129,18 @@ def main(argv: list[str] | None = None) -> int:
         parser.print_help()
         return 2
 
-    query = " ".join(args.query).strip()
-    sites = filter_sites(sites, args.include, args.exclude, args.tags.split(",") if args.tags else ())
-    if args.limit:
-        sites = sites[: args.limit]
-    if not sites:
-        print("Error: el filtro no dejó ningún sitio.", file=sys.stderr)
-        return 2
+    networks: list[str] = []
+    if args.networks:
+        networks = [name.strip().lower() for name in args.networks.split(",") if name.strip()]
+        invalid = [name for name in networks if name not in CHECKERS]
+        if invalid:
+            print(
+                f"Error: redes desconocidas {', '.join(invalid)}. Opciones: {', '.join(CHECKERS)}",
+                file=sys.stderr,
+            )
+            return 2
 
+    query = " ".join(args.query).strip()
     usernames = candidate_usernames(query, all_variants=args.variants)
     if not usernames:
         print("Error: la búsqueda está vacía.", file=sys.stderr)
@@ -139,28 +150,44 @@ def main(argv: list[str] | None = None) -> int:
     result = ScanResult(query=query, usernames=usernames)
     progress = None if args.quiet else _progress
 
-    if not args.quiet:
-        print(
-            f"[*] Buscando {query!r} en {len(sites):,} sitios "
-            f"({len(usernames)} variante(s), {args.workers} hilos)…",
-            file=sys.stderr,
-        )
-
-    scan_result = scan_sites(sites, usernames, client, args.workers, args.timeout, progress)
-    result.findings.extend(scan_result.findings)
-    result.stats.checked += scan_result.stats.checked
-    result.stats.found += scan_result.stats.found
-    result.stats.not_found += scan_result.stats.not_found
-    result.stats.blocked += scan_result.stats.blocked
-    result.stats.errors += scan_result.stats.errors
-    result.stats.skipped += scan_result.stats.skipped
-
-    if not args.no_engines:
+    if networks:
         if not args.quiet:
-            print("\n[*] Consultando motores de búsqueda públicos…", file=sys.stderr)
-        run_engines(query, client, result, progress)
-        if progress:
-            print(file=sys.stderr)
+            print(
+                f"[*] Modo dedicado: buscando {query!r} en {', '.join(networks)} "
+                f"({len(usernames)} variante(s))…",
+                file=sys.stderr,
+            )
+        scan_networks(networks, usernames, client, result, args.timeout)
+    else:
+        sites = filter_sites(sites, args.include, args.exclude, args.tags.split(",") if args.tags else ())
+        if args.limit:
+            sites = sites[: args.limit]
+        if not sites:
+            print("Error: el filtro no dejó ningún sitio.", file=sys.stderr)
+            return 2
+
+        if not args.quiet:
+            print(
+                f"[*] Buscando {query!r} en {len(sites):,} sitios "
+                f"({len(usernames)} variante(s), {args.workers} hilos)…",
+                file=sys.stderr,
+            )
+
+        scan_result = scan_sites(sites, usernames, client, args.workers, args.timeout, progress)
+        result.findings.extend(scan_result.findings)
+        result.stats.checked += scan_result.stats.checked
+        result.stats.found += scan_result.stats.found
+        result.stats.not_found += scan_result.stats.not_found
+        result.stats.blocked += scan_result.stats.blocked
+        result.stats.errors += scan_result.stats.errors
+        result.stats.skipped += scan_result.stats.skipped
+
+        if not args.no_engines:
+            if not args.quiet:
+                print("\n[*] Consultando motores de búsqueda públicos…", file=sys.stderr)
+            run_engines(query, client, result, progress)
+            if progress:
+                print(file=sys.stderr)
 
     result.findings.sort(key=lambda item: (item.status != "found", item.site.lower()))
     output = render(result, args.format)

@@ -303,6 +303,7 @@ def scan_sites(
                 result.stats.errors += 1
                 continue
 
+            result.stats.checked += 1
             if state == "found":
                 result.stats.found += 1
             elif state == "not_found":
